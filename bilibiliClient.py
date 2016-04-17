@@ -2,14 +2,12 @@ import asyncio
 import aiohttp
 import xml.dom.minidom
 import random
-import json
 from struct import *
 import json
-import config
 import re
 
 class bilibiliClient():
-    def __init__(self):
+    def __init__(self, roomId):
         self._CIDInfoUrl = 'http://live.bilibili.com/api/player?id=cid:'
         self._roomId = 0
         self._ChatPort = 788
@@ -20,11 +18,10 @@ class bilibiliClient():
         self._UserCount = 0
         self._ChatHost = 'livecmt-1.bilibili.com'
 
-        self._roomId = input('请输入房间号：')
+        self._roomId = roomId
         self._roomId = int(self._roomId)
 
     async def connectServer(self):
-        print ('正在进入房间。。。。。')
         with aiohttp.ClientSession() as s:
             async with s.get('http://live.bilibili.com/' + str(self._roomId)) as r:
                 html = await r.text()
@@ -43,11 +40,8 @@ class bilibiliClient():
         reader, writer = await asyncio.open_connection(self._ChatHost, self._ChatPort)
         self._reader = reader
         self._writer = writer
-        print ('链接弹幕中。。。。。')
         if (await self.SendJoinChannel(self._roomId) == True):
             self.connected = True
-            print ('进入房间成功。。。。。')
-            print ('链接弹幕成功。。。。。')
             await self.ReceiveMessageLoop()
 
     async def HeartbeatLoop(self):
@@ -93,7 +87,6 @@ class bilibiliClient():
                 if num==0 or num==1 or num==2:
                     tmp = await self._reader.read(4)
                     num3, = unpack('!I', tmp)
-                    print ('房间人数为 %s' % num3)
                     self._UserCount = num3
                     continue
                 elif num==3 or num==4:
@@ -120,41 +113,12 @@ class bilibiliClient():
         except: # 有些情况会 jsondecode 失败，未细究，可能平台导致
             return
         cmd = dic['cmd']
-        if cmd == 'LIVE':
-            print ('直播开始。。。')
-            return
-        if cmd == 'PREPARING':
-            print ('房主准备中。。。')
-            return
         if cmd == 'DANMU_MSG':
             commentText = dic['info'][1]
             commentUser = dic['info'][2][1]
-            isAdmin = dic['info'][2][2] == '1'
-            isVIP = dic['info'][2][3] == '1'
-            if isAdmin:
-                commentUser = '管理员 ' + commentUser
-            if isVIP:
-                commentUser = 'VIP ' + commentUser
-            try:
-                print (commentUser + ' say: ' + commentText)
-            except:
-                pass
-            return
-        if cmd == 'SEND_GIFT' and config.TURN_GIFT == 1:
-            GiftName = dic['data']['giftName']
-            GiftUser = dic['data']['uname']
-            Giftrcost = dic['data']['rcost']
-            GiftNum = dic['data']['num']
-            try:
-                print(GiftUser + ' 送出了 ' + str(GiftNum) + ' 个 ' + GiftName)
-            except:
-                pass
-            return
-        if cmd == 'WELCOME' and config.TURN_WELCOME == 1:
-            commentUser = dic['data']['uname']
-            try:
-                print ('欢迎 ' + commentUser + ' 进入房间。。。。')
-            except:
-                pass
+            self.commentProc(commentUser, commentText)
             return
         return
+
+    def commentProc(self, commentUser, commentText):
+        print(commentUser, commentText)
