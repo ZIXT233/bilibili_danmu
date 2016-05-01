@@ -29,7 +29,7 @@ class bilibiliClient():
                 ROOMID = m[0]
             self._roomId = int(ROOMID)
             async with s.get(self._CIDInfoUrl + ROOMID) as r:
-                xml_string = '<root>' + await r.text() + '</root>'
+                xml_string = '<root>' + awai    t r.text() + '</root>'
                 dom = xml.dom.minidom.parseString(xml_string)
                 root = dom.documentElement
                 server = root.getElementsByTagName('server')
